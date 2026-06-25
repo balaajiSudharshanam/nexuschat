@@ -18,20 +18,40 @@ function chunkText(text) {
 }
 
 async function ingestPdf(buffer, docName) {
+  console.log(`[INGEST] Starting ingestion for "${docName}" (${(buffer.length / 1024).toFixed(1)} KB)`);
+
   const { text } = await pdfParse(buffer);
+  console.log(`[INGEST] "${docName}" extracted ${text.length} characters of text`);
+
   const chunks = chunkText(text);
+  if (chunks.length === 0) {
+    console.warn(`[INGEST] "${docName}" produced 0 chunks — PDF may be image-based or have no extractable text`);
+    await addChunks(docName, []);
+    return 0;
+  }
+  console.log(`[INGEST] "${docName}" split into ${chunks.length} chunk(s) (~${CHUNK_SIZE} words each)`);
 
   let embedded;
+  let embeddedCount = 0;
   try {
     embedded = await Promise.all(
-      chunks.map(async (t) => ({ text: t, embedding: await embed(t) }))
+      chunks.map(async (t) => {
+        const embedding = await embed(t);
+        if (!embedding || !Array.isArray(embedding)) {
+          throw new Error(`embed() returned invalid value: ${JSON.stringify(embedding)}`);
+        }
+        return { text: t, embedding };
+      })
     );
+    embeddedCount = embedded.length;
+    console.log(`[INGEST] "${docName}" embedded ${embeddedCount}/${chunks.length} chunk(s) successfully`);
   } catch (err) {
-    console.warn(`[ingest] embedding skipped for ${docName}: ${err.message}`);
-    embedded = chunks.map((t) => ({ text: t })); // no embedding — keyword fallback only
+    console.warn(`[INGEST] "${docName}" embedding failed — storing text-only for BM25 fallback: ${err.message}`);
+    embedded = chunks.map((t) => ({ text: t }));
   }
 
   await addChunks(docName, embedded);
+  console.log(`[INGEST] "${docName}" ingestion complete — ${chunks.length} chunk(s) stored (${embeddedCount} with vectors)`);
   return chunks.length;
 }
 

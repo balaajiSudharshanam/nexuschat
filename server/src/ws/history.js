@@ -10,4 +10,8 @@ function getHistory() {
   return [...history];
 }
 
-module.exports = { addMessage, getHistory };
+function clearHistory() {
+  history.length = 0;
+}
+
+module.exports = { addMessage, getHistory, clearHistory };

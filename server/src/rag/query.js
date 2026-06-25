@@ -1,52 +1,36 @@
-const { searchIndex, listDocs, getTextChunks } = require('./store');
-const bm25 = require('./bm25');
+const { listDocs } = require('./store');
+const { hybridSearch } = require('./retrieval');
 const { gradeAll } = require('./grader');
 
-// Reciprocal Rank Fusion — merges ranked lists from multiple retrievers
-function rrfMerge(rankedLists, k = 60) {
-  const scores = new Map();
-  for (const list of rankedLists) {
-    list.forEach(({ text }, rank) => {
-      scores.set(text, (scores.get(text) || 0) + 1 / (k + rank + 1));
-    });
-  }
-  return Array.from(scores.entries())
-    .map(([text, score]) => ({ text, score }))
-    .sort((a, b) => b.score - a.score);
-}
-
-async function hybridSearch(query, docNames, topK = 10) {
-  const { embed } = require('../llm/ollama'); // lazy — breaks circular dep
-
-  // Vector search
-  let vectorResults = [];
-  try {
-    const queryVector = await embed(query);
-    const perDoc = await Promise.all(docNames.map(d => searchIndex(d, queryVector)));
-    vectorResults = perDoc.flat().sort((a, b) => b.score - a.score).slice(0, topK);
-  } catch {}
-
-  // BM25 search across all chunks from the specified docs
-  const allChunks = docNames.flatMap(d => getTextChunks(d));
-  const bm25Results = bm25.search(allChunks, query, topK);
-
-  // Merge both ranked lists with RRF
-  return rrfMerge([vectorResults, bm25Results]).slice(0, topK);
-}
-
 async function queryRag(query, docName = null) {
-  if (docName) {
-    const docs = await listDocs();
-    if (!docs.includes(docName)) return null;
-    const merged = await hybridSearch(query, [docName]);
-    return gradeAll(merged, query);
+  const allDocs = await listDocs();
+
+  const targetDocs = docName
+    ? (allDocs.includes(docName) ? [docName] : null)
+    : allDocs;
+
+  if (targetDocs === null) return null; // requested doc does not exist
+  if (targetDocs.length === 0) return [];
+
+  const qualified = [];
+
+  for (const doc of targetDocs) {
+    const candidates = await hybridSearch(query, [doc]);
+    if (candidates.length === 0) continue;
+
+    const graded = await gradeAll(candidates, query);
+    qualified.push(...graded);
   }
 
-  const docs = await listDocs();
-  if (docs.length === 0) return [];
+  if (qualified.length === 0) {
+    console.warn(`[queryRag] No chunks passed confidence threshold for query: "${query}"`);
+    return [];
+  }
 
-  const merged = await hybridSearch(query, docs);
-  return gradeAll(merged, query);
+  const sourceDocs = new Set(qualified.map(c => c.source).filter(Boolean));
+  console.log(`[queryRag] Retrieved ${qualified.length} high-confidence chunk(s) from ${sourceDocs.size} document(s)`);
+
+  return qualified;
 }
 
 module.exports = { queryRag };

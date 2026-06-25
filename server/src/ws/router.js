@@ -19,6 +19,7 @@ async function routeMessage(msg, ws, clients, broadcast, llmHandler) {
         const docName = match[1] || null;
         const query = match[2];
         const msgId = `llm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        broadcast({ type: 'message', username, text, threadId, ts: Date.now() });
         broadcast({ type: 'llm_start', username, query, docName, threadId, msgId });
         await llmHandler({ query, docName, threadId, history: getHistory(), msgId }, broadcast);
       } else {
