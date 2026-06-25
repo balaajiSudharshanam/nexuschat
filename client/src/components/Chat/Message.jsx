@@ -35,6 +35,12 @@ export default function Message({ msg }) {
         <div style={llmBody}>
           {msg.text ? <ReactMarkdown>{msg.text}</ReactMarkdown> : <TypingDots />}
         </div>
+        {msg.sources && msg.sources.length > 0 && (
+          <div style={sourcesBar}>
+            <span style={sourcesLabel}>Sources:</span>
+            {msg.sources.map(s => <span key={s} style={sourceChip}>{s}</span>)}
+          </div>
+        )}
         {msg.text && msg.id && (
           <ReplyButton msgId={msg.id} count={threadCount} onOpen={setActiveThread} />
         )}
@@ -68,4 +74,7 @@ const text = { fontSize: 14, color: '#e0e0e0', wordBreak: 'break-word' };
 const llmBubble = { background: '#1e2a3a', borderLeft: '3px solid #4f8ef7', padding: '10px 14px', borderRadius: 6, marginBottom: 4 };
 const llmLabel = { fontSize: 11, color: '#4f8ef7', fontWeight: 700, display: 'block', marginBottom: 6 };
 const llmBody = { fontSize: 14, color: '#e0e0e0', lineHeight: 1.6 };
+const sourcesBar = { marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' };
+const sourcesLabel = { fontSize: 11, color: '#888', fontWeight: 600 };
+const sourceChip = { fontSize: 11, color: '#4f8ef7', background: '#12202f', borderRadius: 4, padding: '2px 6px', border: '1px solid #2a3a4a' };
 const replyBtn = { background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 12, padding: '2px 0', marginLeft: 4 };

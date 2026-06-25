@@ -14,7 +14,7 @@ export function useWebSocket() {
   const backoffRef = useRef(1000);
   const destroyedRef = useRef(false);
   const [connected, setConnected] = useState(false);
-  const { username, addMessage, appendLlmToken, setUsers, setDocs } = useChatStore();
+  const { username, addMessage, appendLlmToken, finalizeLlmMessage, setUsers, setDocs } = useChatStore();
   const { notify } = useNotifications();
   const connect = useCallback(() => {
     if (destroyedRef.current) return;
@@ -48,6 +48,7 @@ export function useWebSocket() {
           appendLlmToken(msg.token, msg.threadId, msg.msgId);
           break;
         case 'llm_done':
+          finalizeLlmMessage(msg.msgId, msg.sources || [], msg.threadId);
           notify('LLM response ready');
           break;
         case 'doc_removed':
@@ -63,7 +64,7 @@ export function useWebSocket() {
         backoffRef.current = nextBackoff(backoffRef.current, MAX_BACKOFF);
       }
     };
-  }, [username, addMessage, appendLlmToken, setUsers, setDocs, notify]);
+  }, [username, addMessage, appendLlmToken, finalizeLlmMessage, setUsers, setDocs, notify]);
 
   useEffect(() => {
     destroyedRef.current = false;

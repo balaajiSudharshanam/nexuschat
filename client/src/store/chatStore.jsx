@@ -27,6 +27,18 @@ export function ChatProvider({ children }) {
     }
   }, []);
 
+  const finalizeLlmMessage = useCallback((msgId, sources, threadId) => {
+    const update = (m) => m.id === msgId ? { ...m, sources } : m;
+    if (threadId) {
+      setThreads((prev) => ({
+        ...prev,
+        [threadId]: (prev[threadId] || []).map(update),
+      }));
+    } else {
+      setMessages((prev) => prev.map(update));
+    }
+  }, []);
+
   const appendLlmToken = useCallback((token, threadId, msgId) => {
     const key = msgId;
     streamingRef.current[key] = (streamingRef.current[key] || '') + token;
@@ -58,6 +70,7 @@ export function ChatProvider({ children }) {
       users, setUsers,
       docs, setDocs,
       appendLlmToken,
+      finalizeLlmMessage,
     }}>
       {children}
     </ChatContext.Provider>
