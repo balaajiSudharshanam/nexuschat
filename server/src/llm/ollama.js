@@ -1,6 +1,5 @@
 const config = require('../config');
 const { queryRag } = require('../rag/query');
-const { validateResults } = require('../rag/validateResults');
 const { addMessage } = require('../ws/history');
 
 // Queries that should go straight to the LLM without touching the RAG pipeline.
@@ -22,7 +21,7 @@ async function handleLlmMention({ query, docName, threadId, history = [], msgId 
       return;
     }
 
-    chunks = rawChunks; // validateResults disabled
+    chunks = rawChunks;
 
     if (chunks.length === 0 && docName) {
       broadcast({

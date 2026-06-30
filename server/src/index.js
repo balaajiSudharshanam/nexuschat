@@ -15,7 +15,7 @@ require('./routes/docs').setBroadcast(broadcast);
 loadDocs().then(() => {
   httpServer.listen(config.port, () => {
     console.log(`Nexus running on port ${config.port}`);
-    announce(config.port, config.bonjourName);
+    announce(config.port);
   });
 
   httpServer.on('error', (err) => {

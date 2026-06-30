@@ -33,7 +33,7 @@ describe('Message Router', () => {
     expect(llmHandler).not.toHaveBeenCalled();
   });
 
-  test('@llm mention broadcasts llm_start and calls llmHandler with query and no docName', async () => {
+  test('@llm mention broadcasts original message then llm_start, calls llmHandler with query and no docName', async () => {
     const { ws, clients, broadcast, broadcasts, llmHandler } = makeContext();
 
     await routeMessage(
@@ -41,14 +41,15 @@ describe('Message Router', () => {
       ws, clients, broadcast, llmHandler
     );
 
-    expect(broadcasts[0]).toMatchObject({
+    expect(broadcasts[0]).toMatchObject({ type: 'message', username: 'Alice' });
+    expect(broadcasts[1]).toMatchObject({
       type: 'llm_start',
       username: 'Alice',
       query: 'what is the capital of France?',
       docName: null,
     });
     expect(llmHandler).toHaveBeenCalledWith(
-      { query: 'what is the capital of France?', docName: null, threadId: undefined },
+      expect.objectContaining({ query: 'what is the capital of France?', docName: null, threadId: undefined }),
       broadcast
     );
   });
@@ -61,9 +62,9 @@ describe('Message Router', () => {
       ws, clients, broadcast, llmHandler
     );
 
-    expect(broadcasts[0]).toMatchObject({ type: 'llm_start', docName: 'report.pdf', query: 'summarise the findings' });
+    expect(broadcasts[1]).toMatchObject({ type: 'llm_start', docName: 'report.pdf', query: 'summarise the findings' });
     expect(llmHandler).toHaveBeenCalledWith(
-      { query: 'summarise the findings', docName: 'report.pdf', threadId: undefined },
+      expect.objectContaining({ query: 'summarise the findings', docName: 'report.pdf', threadId: undefined }),
       broadcast
     );
   });

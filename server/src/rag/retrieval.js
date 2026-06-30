@@ -1,8 +1,8 @@
 const { searchIndex, getTextChunks } = require('./store');
 const bm25 = require('./bm25');
 
-const VECTOR_THRESHOLD = 0.6;
-const BM25_THRESHOLD = 2.0;
+const VECTOR_THRESHOLD = 0.2;
+const BM25_THRESHOLD = 0.2;
 
 function rrfMerge(rankedLists, k = 60) {
   const scores = new Map();

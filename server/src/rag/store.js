@@ -48,7 +48,8 @@ async function addChunks(docName, chunks) {
 
 async function searchIndex(docName, queryVector, topK = 5) {
   const index = await getIndex(docName);
-  const results = await index.queryItems(queryVector, topK);
+  // queryItems(vector, query, topK, filter, isBm25) — skip the query string param
+  const results = await index.queryItems(queryVector, undefined, topK);
   return results.map((r) => ({ text: r.item.metadata.text, score: r.score }));
 }
 

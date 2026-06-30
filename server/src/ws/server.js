@@ -1,8 +1,12 @@
 const { WebSocketServer } = require('ws');
 const { routeMessage } = require('./router');
 const { handleLlmMention } = require('../llm/ollama');
+const { runAgentTurn } = require('../agents/engine');
+const { getAgent } = require('../agents/store');
+const { queryRag } = require('../rag/query');
 
-const clients = new Map(); // ws -> { username }
+const clients = new Map();  // ws -> { username }
+const sessions = new Map(); // ws -> { agentId, history, resolveApproval }
 
 function broadcast(payload, excludeWs = null) {
   const data = JSON.stringify(payload);
@@ -13,10 +17,65 @@ function broadcast(payload, excludeWs = null) {
   }
 }
 
-function handleDisconnect(ws, clients, broadcast) {
+function send(ws, payload) {
+  if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(payload));
+}
+
+function handleDisconnect(ws) {
   const { username } = clients.get(ws) || {};
   clients.delete(ws);
+  sessions.delete(ws);
   if (username) broadcast({ type: 'leave', username });
+}
+
+async function handleAgentMessage(msg, ws) {
+  switch (msg.type) {
+    case 'agent_start': {
+      const agent = getAgent(msg.agentId);
+      if (!agent) { send(ws, { type: 'agent_error', error: 'Agent not found' }); return; }
+      sessions.set(ws, { agentId: msg.agentId, history: [], resolveApproval: null });
+      send(ws, { type: 'agent_ready', agentId: msg.agentId });
+      break;
+    }
+
+    case 'agent_message': {
+      const session = sessions.get(ws);
+      if (!session) { send(ws, { type: 'agent_error', error: 'No active agent session' }); return; }
+      const agent = getAgent(session.agentId);
+      if (!agent) { send(ws, { type: 'agent_error', error: 'Agent not found' }); return; }
+
+      const waitForApproval = (_tool, _args) => new Promise((resolve) => {
+        session.resolveApproval = resolve;
+      });
+
+      try {
+        await runAgentTurn(
+          { query: msg.text, agent, history: session.history },
+          (payload) => send(ws, payload),
+          waitForApproval,
+          queryRag,
+        );
+      } catch (err) {
+        console.error('[agent] runAgentTurn error:', err.message);
+        send(ws, { type: 'agent_error', error: err.message });
+      }
+      break;
+    }
+
+    case 'agent_approval_response': {
+      const session = sessions.get(ws);
+      if (session?.resolveApproval) {
+        session.resolveApproval(!!msg.approved);
+        session.resolveApproval = null;
+      }
+      break;
+    }
+
+    case 'agent_end': {
+      sessions.delete(ws);
+      break;
+    }
+  }
 }
 
 function initWsServer(httpServer) {
@@ -28,6 +87,14 @@ function initWsServer(httpServer) {
     ws.on('message', async (raw) => {
       let msg;
       try { msg = JSON.parse(raw); } catch { return; }
+
+      if (msg.type?.startsWith('agent_')) {
+        try { await handleAgentMessage(msg, ws); } catch (err) {
+          console.error('[agent] handler error:', err.message);
+        }
+        return;
+      }
+
       try {
         await routeMessage(msg, ws, clients, broadcast, handleLlmMention);
       } catch (err) {
@@ -36,7 +103,7 @@ function initWsServer(httpServer) {
       }
     });
 
-    ws.on('close', () => handleDisconnect(ws, clients, broadcast));
+    ws.on('close', () => handleDisconnect(ws));
   });
 }
 
