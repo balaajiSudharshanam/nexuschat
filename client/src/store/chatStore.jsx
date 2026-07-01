@@ -11,6 +11,13 @@ export function ChatProvider({ children }) {
   const [docs, setDocs] = useState([]);
   const streamingRef = useRef({}); // messageId -> accumulated tokens
 
+  // Agent state
+  const [agents, setAgents] = useState([]);
+  const [activeAgent, setActiveAgent] = useState(null);
+  const [agentMessages, setAgentMessages] = useState([]);
+  const [agentThinking, setAgentThinking] = useState(false);
+  const [agentApprovalRequest, setAgentApprovalRequest] = useState(null);
+
   const saveUsername = useCallback((name) => {
     localStorage.setItem('nexus_username', name);
     setUsername(name);
@@ -62,6 +69,33 @@ export function ChatProvider({ children }) {
     }
   }, []);
 
+  // Agent actions
+  const openAgent = useCallback((agent) => {
+    setActiveAgent(agent);
+    setActiveThread(null);
+    setAgentMessages([]);
+    setAgentThinking(false);
+    setAgentApprovalRequest(null);
+  }, []);
+
+  const closeAgent = useCallback(() => {
+    setActiveAgent(null);
+    setAgentMessages([]);
+    setAgentThinking(false);
+    setAgentApprovalRequest(null);
+  }, []);
+
+  const addAgentMessage = useCallback((msg) => {
+    setAgentMessages((prev) => {
+      if (prev.find((m) => m.id === msg.id)) return prev;
+      return [...prev, msg];
+    });
+  }, []);
+
+  const updateAgentMessage = useCallback((id, patch) => {
+    setAgentMessages((prev) => prev.map((m) => m.id === id ? { ...m, ...patch } : m));
+  }, []);
+
   return (
     <ChatContext.Provider value={{
       username, saveUsername,
@@ -71,6 +105,11 @@ export function ChatProvider({ children }) {
       docs, setDocs,
       appendLlmToken,
       finalizeLlmMessage,
+      agents, setAgents,
+      activeAgent, openAgent, closeAgent,
+      agentMessages, addAgentMessage, updateAgentMessage,
+      agentThinking, setAgentThinking,
+      agentApprovalRequest, setAgentApprovalRequest,
     }}>
       {children}
     </ChatContext.Provider>

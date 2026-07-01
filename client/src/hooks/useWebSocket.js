@@ -14,8 +14,12 @@ export function useWebSocket() {
   const backoffRef = useRef(1000);
   const destroyedRef = useRef(false);
   const [connected, setConnected] = useState(false);
-  const { username, addMessage, appendLlmToken, finalizeLlmMessage, setUsers, setDocs } = useChatStore();
+  const {
+    username, addMessage, appendLlmToken, finalizeLlmMessage, setUsers, setDocs,
+    addAgentMessage, updateAgentMessage, setAgentThinking, setAgentApprovalRequest,
+  } = useChatStore();
   const { notify } = useNotifications();
+
   const connect = useCallback(() => {
     if (destroyedRef.current) return;
 
@@ -54,6 +58,24 @@ export function useWebSocket() {
         case 'doc_removed':
           setDocs((prev) => prev.filter((d) => d !== msg.docName));
           break;
+        case 'agent_token':
+          addAgentMessage({ id: msg.msgId, type: 'agent', text: msg.token });
+          break;
+        case 'agent_approval_request':
+          addAgentMessage({ id: `appr-${msg.msgId}`, type: 'approval', tool: msg.tool, args: msg.args, msgId: msg.msgId });
+          setAgentApprovalRequest({ tool: msg.tool, args: msg.args, msgId: msg.msgId });
+          break;
+        case 'agent_tool_result':
+          addAgentMessage({ id: `tool-${msg.msgId}`, type: 'tool_result', tool: msg.tool, data: msg.data });
+          break;
+        case 'agent_done':
+          setAgentThinking(false);
+          setAgentApprovalRequest(null);
+          break;
+        case 'agent_error':
+          addAgentMessage({ id: `err-${Date.now()}`, type: 'error', text: msg.error });
+          setAgentThinking(false);
+          break;
       }
     };
 
@@ -64,7 +86,8 @@ export function useWebSocket() {
         backoffRef.current = nextBackoff(backoffRef.current, MAX_BACKOFF);
       }
     };
-  }, [username, addMessage, appendLlmToken, finalizeLlmMessage, setUsers, setDocs, notify]);
+  }, [username, addMessage, appendLlmToken, finalizeLlmMessage, setUsers, setDocs, notify,
+      addAgentMessage, updateAgentMessage, setAgentThinking, setAgentApprovalRequest]);
 
   useEffect(() => {
     destroyedRef.current = false;

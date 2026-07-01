@@ -3,6 +3,10 @@ jest.mock('../../rag/store', () => ({
   listDocs: jest.fn().mockResolvedValue([]),
   deleteDoc: jest.fn(),
 }));
+jest.mock('../../agents/tools', () => ({
+  executeTool: jest.fn(),
+  listTools: jest.fn().mockReturnValue([]),
+}));
 const { app } = require('../../app');
 const { listDocs, deleteDoc } = require('../../rag/store');
 const { setBroadcast } = require('../docs');

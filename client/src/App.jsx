@@ -7,9 +7,10 @@ import OfflineBanner from './components/common/OfflineBanner';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatRoom from './components/Chat/ChatRoom';
 import ThreadPanel from './components/Thread/ThreadPanel';
+import AgentPanel from './components/Agents/AgentPanel';
 
 function Inner() {
-  const { username, activeThread } = useChatStore();
+  const { username, activeThread, activeAgent } = useChatStore();
   const { connected, send } = useWebSocket();
   const isMobile = useMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -28,8 +29,15 @@ function Inner() {
       )}
 
       <Sidebar isMobile={isMobile} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <ChatRoom send={send} isMobile={isMobile} onMenuClick={() => setSidebarOpen(o => !o)} />
-      {activeThread && <ThreadPanel send={send} isMobile={isMobile} />}
+
+      {activeAgent ? (
+        <AgentPanel send={send} isMobile={isMobile} onMenuClick={() => setSidebarOpen((o) => !o)} />
+      ) : (
+        <>
+          <ChatRoom send={send} isMobile={isMobile} onMenuClick={() => setSidebarOpen(o => !o)} />
+          {activeThread && <ThreadPanel send={send} isMobile={isMobile} />}
+        </>
+      )}
     </div>
   );
 }

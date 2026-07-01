@@ -21,11 +21,11 @@ function send(ws, payload) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(payload));
 }
 
-function handleDisconnect(ws) {
-  const { username } = clients.get(ws) || {};
-  clients.delete(ws);
-  sessions.delete(ws);
-  if (username) broadcast({ type: 'leave', username });
+function handleDisconnect(ws, clientsMap = clients, sessionsMap = sessions, broadcastFn = broadcast) {
+  const { username } = clientsMap.get(ws) || {};
+  clientsMap.delete(ws);
+  sessionsMap.delete(ws);
+  if (username) broadcastFn({ type: 'leave', username });
 }
 
 async function handleAgentMessage(msg, ws) {

@@ -1,5 +1,6 @@
 import UserList from './UserList';
 import DocList from './DocList';
+import AgentList from '../Agents/AgentList';
 
 export default function Sidebar({ isMobile, isOpen, onClose }) {
   const style = isMobile
@@ -22,6 +23,7 @@ export default function Sidebar({ isMobile, isOpen, onClose }) {
       </div>
       <UserList />
       <DocList />
+      <AgentList />
     </aside>
   );
 }

@@ -49,11 +49,11 @@ The persisted configuration of an Agent: name, description, instructions, Pinned
 _Avoid_: Agent config, agent schema, agent spec
 
 **Agent Session**:
-A private, ephemeral 1-on-1 conversation between a Participant and an Agent. Lost when the Participant disconnects.
+A private, ephemeral 1-on-1 conversation between a Participant and an Agent, started when the Participant opens the agent in the UI and ended when they close it or disconnect. Multiple Participants can hold independent simultaneous sessions with the same Agent. Lost when the Participant disconnects.
 _Avoid_: Agent chat, agent conversation, agent thread
 
 **Tool**:
-A server-side function an Agent can invoke during an Agent Session (web scraper, PDF maker, Excel manipulator). Execution requires Runtime Approval.
+A server-side function an Agent can invoke during an Agent Session. Three tools are available: **scraper** (fetches and extracts text from a URL), **pdfMaker** (generates a PDF from content), and **excel** (reads or writes Excel files). Execution requires Runtime Approval.
 _Avoid_: Plugin, function, capability, MCP tool
 
 **Tool Call Tag**:
@@ -93,3 +93,22 @@ _Avoid_: Reranker, filter, validator
 **RRF** (Reciprocal Rank Fusion):
 The merge strategy that combines the vector-ranked and BM25-ranked Chunk lists into one. Chunks that rank well in both lists are boosted.
 _Avoid_: Score fusion, rank aggregation
+
+---
+
+## WebSocket Protocol (Agent Sessions)
+
+Agent Sessions use the existing WebSocket connection with five message types specific to agents:
+
+| Direction | Type | Meaning |
+|---|---|---|
+| client → server | `agent_start` | Participant opens an Agent Session (`agentId`) |
+| client → server | `agent_message` | Participant sends a message to the Agent (`text`) |
+| client → server | `agent_end` | Participant closes the Agent Session |
+| server → client | `agent_token` | Streaming token from the Agent response (`msgId`, `token`) |
+| server → client | `agent_approval_request` | Agent wants to call a Tool; awaiting approval (`tool`, `args`, `msgId`) |
+| server → client | `agent_tool_result` | Tool execution result after approval (`tool`, `data`, `msgId`) |
+| server → client | `agent_done` | Agent turn complete |
+| server → client | `agent_error` | Agent turn failed (`error`) |
+| client → server | `agent_approve` | Participant approves a pending Tool call (`msgId`) |
+| client → server | `agent_deny` | Participant denies a pending Tool call (`msgId`) |
