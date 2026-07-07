@@ -7,6 +7,7 @@ function loadConfig(env) {
     port: parseInt(env.SERVER_PORT || '3000', 10),
     dataDir: env.DATA_DIR || './data',
     ollamaBaseUrl: env.OLLAMA_BASE_URL || 'http://localhost:11434',
+    serperApiKey: env.SERPER_API_KEY || '',
   };
 }
 

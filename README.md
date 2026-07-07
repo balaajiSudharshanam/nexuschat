@@ -1,6 +1,6 @@
 ﻿# Nexus
 
-A local-first AI chat application that lets you upload PDF documents and query them using natural language via a WebSocket-powered chat interface. All inference runs locally through [Ollama](https://ollama.com) — no data leaves your machine.
+A local-first AI chat application that lets you upload PDF documents and query them using natural language via a WebSocket-powered chat interface. All inference runs locally through [Ollama](https://ollama.com). Agents can optionally reach the open web (search + page fetch), gated behind an explicit human approval step before any such call is made.
 
 ---
 
@@ -31,7 +31,7 @@ client (React + Vite)
                         ├── agents/
                         │   ├── engine.js    — agent turn runner, tool-call tag parsing
                         │   ├── store.js     — agent definition persistence (JSON)
-                        │   └── tools/       — scraper, pdfMaker, excel
+                        │   └── tools/       — webSearch, pdfMaker, excel
                         └── rag/
                             ├── ingest.js    — PDF parsing, chunking, embedding
                             ├── store.js     — Vectra vector index + BM25 text store
@@ -76,6 +76,7 @@ SERVER_PORT=3000
 BONJOUR_NAME=nexus
 DATA_DIR=./data
 OLLAMA_BASE_URL=http://localhost:11434
+SERPER_API_KEY=your-serper-api-key
 ```
 
 ---
@@ -123,7 +124,7 @@ Custom AI Agents appear in the sidebar under **Agents**. Click an agent name to 
 - **Description** (optional) — short tagline shown on hover
 - **Instructions** (required) — system prompt that defines the agent's behaviour
 - **Pinned Documents** — restrict retrieval to specific uploaded documents; leave blank to search all
-- **Enabled Tools** — tools the agent may invoke: web scraper, PDF maker, Excel manipulator
+- **Enabled Tools** — tools the agent may invoke: web search, PDF maker, Excel manipulator
 
 **Tool approval** — when the agent decides to call a tool, the session pauses and asks you to approve or deny before the tool executes.
 
@@ -180,6 +181,7 @@ If no chunks pass grading and no `/doc:` was specified, the model answers conver
 | `DATA_DIR` | `./data` | Vector index and text chunk storage |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API base URL |
 | `BONJOUR_NAME` | `nexus` | mDNS service name for local discovery |
+| `SERPER_API_KEY` | _(none)_ | API key for the webSearch tool's search step ([serper.dev](https://serper.dev)) |
 
 ---
 
@@ -207,7 +209,7 @@ nexus/
 │   │   │   ├── store.js          — agent definition persistence (agents.json)
 │   │   │   └── tools/
 │   │   │       ├── index.js      — tool registry (executeTool, listTools)
-│   │   │       ├── scraper.js    — web page scraper
+│   │   │       ├── webSearch.js  — search (Serper) → scrape (Playwright) → rerank (Grader)
 │   │   │       ├── pdfMaker.js   — PDF generation
 │   │   │       └── excel.js      — Excel file manipulation
 │   │   ├── routes/
@@ -262,6 +264,12 @@ npm start 2>&1 | grep "\[STORE\]"       # index reads/writes
 ---
 
 ## Changelog
+
+### [feat] Replace scraper tool with web search — 2026-07-07
+
+**What:** Agents can now search the web and read the most relevant results, instead of only fetching one known URL.
+**Why:** The old `scraper` tool required the agent (or user) to already know the target URL, so it couldn't answer open-ended questions.
+**How:** Removed `scraper.js` (cheerio-based single-page fetch) and added `webSearch.js`, which queries Serper for candidate URLs, renders each with Playwright, chunks and grades the extracted text against the query, and returns the top-scoring chunks. `queryRag` and the agent engine were updated to support multi-document targets and to only run retrieval when an agent has pinned documents, rather than falling back to a full-corpus search.
 
 ### [feat] Agent system — 2026-07-01
 

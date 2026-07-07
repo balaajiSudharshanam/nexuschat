@@ -1,9 +1,9 @@
-const scraper = require('./scraper');
+const webSearch = require('./webSearch');
 const pdfMaker = require('./pdfMaker');
 const excel = require('./excel');
 
 const REGISTRY = new Map([
-  [scraper.id, scraper],
+  [webSearch.id, webSearch],
   [pdfMaker.id, pdfMaker],
   [excel.id, excel],
 ]);

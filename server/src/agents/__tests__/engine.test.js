@@ -5,6 +5,13 @@ jest.mock('../tools', () => ({
 }));
 
 const { runAgentTurn } = require('../engine');
+const { listTools } = require('../tools');
+
+// Every describe block below calls jest.resetAllMocks() in its own afterEach,
+// which wipes listTools' mockReturnValue too — restore the default before each test.
+beforeEach(() => {
+  listTools.mockReturnValue([]);
+});
 
 function makeStream(tokens) {
   const encoder = new TextEncoder();
@@ -60,12 +67,21 @@ describe('runAgentTurn — conversational bypass', () => {
     expect(ragQuery).not.toHaveBeenCalled();
   });
 
-  test('calls ragQuery for a substantive question', async () => {
+  test('skips ragQuery for a substantive question when no docs are pinned', async () => {
     await runAgentTurn(
       { query: 'what does the Q3 report say about revenue?', agent: BASE_AGENT, history: [] },
       send, waitForApproval, ragQuery,
     );
-    expect(ragQuery).toHaveBeenCalled();
+    expect(ragQuery).not.toHaveBeenCalled();
+  });
+
+  test('calls ragQuery with all pinned docs for a substantive question', async () => {
+    const agent = { ...BASE_AGENT, pinnedDocs: ['report.pdf', 'notes.pdf'] };
+    await runAgentTurn(
+      { query: 'what does the Q3 report say about revenue?', agent, history: [] },
+      send, waitForApproval, ragQuery,
+    );
+    expect(ragQuery).toHaveBeenCalledWith('what does the Q3 report say about revenue?', ['report.pdf', 'notes.pdf']);
   });
 });
 
@@ -199,5 +215,42 @@ describe('runAgentTurn — clean response (no tool tag)', () => {
     const doneMsg = sent.find(m => m.type === 'agent_done');
     expect(doneMsg).toBeDefined();
     expect(doneMsg.msgId).toBe(tokenMsg.msgId);
+  });
+});
+
+describe('runAgentTurn — tool awareness in system prompt', () => {
+  let send;
+  let waitForApproval;
+  let ragQuery;
+
+  beforeEach(() => {
+    send = () => {};
+    waitForApproval = jest.fn();
+    ragQuery = jest.fn().mockResolvedValue([]);
+  });
+
+  afterEach(() => jest.resetAllMocks());
+
+  test('system prompt tells the LLM which enabled tools exist and how to call them', async () => {
+    listTools.mockReturnValue([
+      { id: 'pdfMaker', description: 'Generate a PDF from a title and content string' },
+    ]);
+
+    let capturedBody;
+    global.fetch = jest.fn().mockImplementation(async (_url, opts) => {
+      capturedBody = JSON.parse(opts.body);
+      return makeStream(['Sure, here is my answer.']);
+    });
+
+    const agent = { ...BASE_AGENT, enabledTools: ['pdfMaker'] };
+    await runAgentTurn(
+      { query: 'generate a pdf comparing them', agent, history: [] },
+      send, waitForApproval, ragQuery,
+    );
+
+    const systemMessage = capturedBody.messages.find((m) => m.role === 'system');
+    expect(systemMessage.content).toContain('pdfMaker');
+    expect(systemMessage.content).toContain('Generate a PDF from a title and content string');
+    expect(systemMessage.content).toContain('nexus_tool');
   });
 });

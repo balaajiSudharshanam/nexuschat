@@ -2,12 +2,17 @@ const { listDocs } = require('./store');
 const { hybridSearch } = require('./retrieval');
 const { gradeAll } = require('./grader');
 
-async function queryRag(query, docName = null) {
+async function queryRag(query, docTarget = null) {
   const allDocs = await listDocs();
 
-  const targetDocs = docName
-    ? (allDocs.includes(docName) ? [docName] : null)
-    : allDocs;
+  let targetDocs;
+  if (Array.isArray(docTarget)) {
+    targetDocs = docTarget.filter(d => allDocs.includes(d));
+  } else if (docTarget) {
+    targetDocs = allDocs.includes(docTarget) ? [docTarget] : null;
+  } else {
+    targetDocs = allDocs;
+  }
 
   if (targetDocs === null) return null; // requested doc does not exist
   if (targetDocs.length === 0) return [];
@@ -26,6 +31,8 @@ async function queryRag(query, docName = null) {
     console.warn(`[queryRag] No chunks passed confidence threshold for query: "${query}"`);
     return [];
   }
+
+  qualified.sort((a, b) => b.graderScore - a.graderScore);
 
   const sourceDocs = new Set(qualified.map(c => c.source).filter(Boolean));
   console.log(`[queryRag] Retrieved ${qualified.length} high-confidence chunk(s) from ${sourceDocs.size} document(s)`);

@@ -82,9 +82,14 @@ async function deleteDoc(docName) {
   indexes.delete(docName);
   texts.delete(docName);
 
-  const p = textsPath(docName);
-  if (fs.existsSync(p)) {
-    try { fs.unlinkSync(p); } catch {}
+  const dir = path.join(config.dataDir, docName);
+  if (fs.existsSync(dir)) {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+      console.log(`[STORE] "${docName}" removed from disk`);
+    } catch (err) {
+      console.error(`[STORE] Failed to remove "${docName}" from disk: ${err.message}`);
+    }
   }
 }
 

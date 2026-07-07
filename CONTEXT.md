@@ -16,26 +16,32 @@ _Avoid_: User, client, member, node
 
 ### Communication
 
-**Room**:
-The single shared group chat that all Participants see. Ephemeral — history is wiped when the Host restarts.
-_Avoid_: Channel, chat room, workspace
+**Channel**:
+A named group chat visible to all Participants. Multiple Channels can exist; Participants switch between them by selecting one from the sidebar. History persists in the database across Host restarts.
+_Avoid_: Room, chat room, workspace
 
 **Thread**:
-A focused sub-conversation branching from a single Room message, displayed in a side panel. Thread messages do not appear in the Room scroll.
+A focused sub-conversation branching from a single Channel message, displayed in a side panel. Thread messages do not appear in the Channel scroll.
 _Avoid_: Reply chain, sub-chat
 
 **LLM Mention**:
-A Room or Thread message prefixed with `@llm`. Triggers the RAG pipeline and streams an LLM response visible to all Participants.
+A Channel or Thread message prefixed with `@llm`. Triggers the RAG pipeline and streams an LLM response visible to all Participants in that Channel.
 _Avoid_: Bot mention, AI query, command
+
+### Projects
+
+**Project**:
+A named, persistent workspace shared across all Participants. Contains a dedicated Channel (with history that survives Host restarts), custom instructions that scope every LLM Mention inside it, and a set of Pinned Documents for retrieval. Participants switch into a Project from the sidebar the same way they switch between Channels.
+_Avoid_: Workspace, folder, space, group
 
 ### Documents
 
 **Document**:
-A PDF uploaded to the Host. Indexed for retrieval and listed in the document sidebar. Survives Host restarts.
+A PDF uploaded to the shared Document pool, visible LAN-wide. Any Agent can select it as a Pinned Document, and a Channel can target it directly by name. Survives Host restarts.
 _Avoid_: File, attachment, PDF, doc
 
 **Pinned Documents**:
-The subset of Documents an Agent is scoped to for retrieval. If empty, the Agent searches all Documents.
+The subset of the shared Document pool an Agent has selected for retrieval. If empty, the Agent performs no retrieval — it does not fall back to searching the whole pool.
 _Avoid_: Attached docs, linked files, document scope
 
 ### Agents
@@ -53,7 +59,7 @@ A private, ephemeral 1-on-1 conversation between a Participant and an Agent, sta
 _Avoid_: Agent chat, agent conversation, agent thread
 
 **Tool**:
-A server-side function an Agent can invoke during an Agent Session. Three tools are available: **scraper** (fetches and extracts text from a URL), **pdfMaker** (generates a PDF from content), and **excel** (reads or writes Excel files). Execution requires Runtime Approval.
+A server-side function an Agent can invoke during an Agent Session. Three tools are available: **webSearch** (searches the web and reads the most relevant results for a query, or fetches a specific URL directly), **pdfMaker** (generates a PDF from content), and **excel** (reads or writes Excel files). Execution requires Runtime Approval.
 _Avoid_: Plugin, function, capability, MCP tool
 
 **Tool Call Tag**:

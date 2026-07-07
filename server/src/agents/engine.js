@@ -1,8 +1,18 @@
 const crypto = require('crypto');
 const config = require('../config');
-const { executeTool } = require('./tools');
+const { executeTool, listTools } = require('./tools');
 
 const TOOL_TAG_RE = /<nexus_tool>([\s\S]*?)<\/nexus_tool>/;
+
+function buildToolInstructions(enabledTools) {
+  if (!enabledTools || enabledTools.length === 0) return '';
+
+  const available = listTools().filter((t) => enabledTools.includes(t.id));
+  if (available.length === 0) return '';
+
+  const toolList = available.map((t) => `- ${t.id}: ${t.description}`).join('\n');
+  return `\n\nYou have access to the following tools:\n${toolList}\n\nTo use a tool, respond with exactly this and nothing else:\n<nexus_tool>{"tool": "<tool id>", "args": { ... }}</nexus_tool>`;
+}
 
 function isConversational(query) {
   const trimmed = query.trim();
@@ -44,15 +54,15 @@ async function runAgentTurn({ query, agent, history }, send, waitForApproval, ra
   const msgId = crypto.randomUUID();
 
   let chunks = [];
-  if (!isConversational(query)) {
-    const docs = agent.pinnedDocs && agent.pinnedDocs.length > 0 ? agent.pinnedDocs : null;
-    chunks = await ragQuery(query, docs ? docs[0] : null) || [];
+  if (!isConversational(query) && agent.pinnedDocs?.length > 0) {
+    chunks = await ragQuery(query, agent.pinnedDocs) || [];
   }
 
   const context = chunks.map(c => `[Source: ${c.source || 'unknown'}]\n${c.text}`).join('\n\n');
+  const toolInstructions = buildToolInstructions(agent.enabledTools);
   const systemPrompt = context
-    ? `${agent.instructions}\n\nAnswer ONLY based on the context below.\n\nContext:\n${context}`
-    : agent.instructions;
+    ? `${agent.instructions}${toolInstructions}\n\nAnswer ONLY based on the context below.\n\nContext:\n${context}`
+    : `${agent.instructions}${toolInstructions}`;
 
   const messages = [
     { role: 'system', content: systemPrompt },

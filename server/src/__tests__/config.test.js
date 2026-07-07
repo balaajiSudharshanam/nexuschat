@@ -10,16 +10,18 @@ describe('loadConfig', () => {
       port: 3000,
       dataDir: './data',
       ollamaBaseUrl: 'http://localhost:11434',
+      serperApiKey: '',
     });
   });
 
-  test('reads MODEL, SERVER_PORT, EMBED_MODEL, DATA_DIR, OLLAMA_BASE_URL from env', () => {
+  test('reads MODEL, SERVER_PORT, EMBED_MODEL, DATA_DIR, OLLAMA_BASE_URL, SERPER_API_KEY from env', () => {
     const config = loadConfig({
       MODEL: 'mistral',
       SERVER_PORT: '8080',
       EMBED_MODEL: 'mxbai-embed-large',
       DATA_DIR: '/tmp/data',
       OLLAMA_BASE_URL: 'http://192.168.1.5:11434',
+      SERPER_API_KEY: 'abc123',
     });
 
     expect(config.model).toBe('mistral');
@@ -27,5 +29,6 @@ describe('loadConfig', () => {
     expect(config.embedModel).toBe('mxbai-embed-large');
     expect(config.dataDir).toBe('/tmp/data');
     expect(config.ollamaBaseUrl).toBe('http://192.168.1.5:11434');
+    expect(config.serperApiKey).toBe('abc123');
   });
 });
